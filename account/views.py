@@ -4,11 +4,12 @@ from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS_1_V1_5
 from Crypto.PublicKey import RSA
 from .decorators import login_required
 from utils.hashtool import hash2mark
-import utils.contants
 import json
-from utils import functions
-from utils import google_auth
-from .models import Cache, AdminUser, WebsiteInfo
+import hashlib
+import base64
+import os
+from utils import functions, contants, google_auth
+from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel
 from django.contrib import auth
 from .serializer import AdminUserSerializer, WebsiteInfoSerializer
 # Create your views here.
@@ -88,6 +89,7 @@ class Login(BaseAPIView):
         if user:
             if AdminUser.check_password(user,password):
                 auth.login(request, user)
+                Cache.objects.get(mark_info=mark_info).delete()
                 return self.success(None)
             else:
                 return self.error({
@@ -205,3 +207,100 @@ class ChangeVerifySec(BaseAPIView):
                         'errMsg': 'Old google auth code error.'
                     }
                 )
+
+
+class UploadAPI(BaseAPIView):
+    @login_required
+    def get(self, request):
+        # 这里的MD5信息是图片内容经过Base64处理后进行哈希得到
+        md5 = request.GET.get('file_md5')
+        if ImgSource.objects.filter(md5=md5).exists():
+            return self.info(
+                {
+                    'errMsg': 'File already exists.'
+                }
+            )
+
+        return self.success(None)
+
+    def post(self, request):
+        data = request.data
+        file_data = data['encode_data']
+        file_type = data['type']
+        file_md5 = data['md5']
+        if file_type not in file_type:
+            return self.error(
+                {
+                    'errMsg': 'File type is not allow.'
+                }
+            )
+
+        if ImgSource.objects.filter(md5=file_md5).exists():
+            return self.error(
+                {
+                    'errMsg': 'File already exists.'
+                }
+            )
+
+        md5_digest = hashlib.md5(file_data.encode('utf-8')).hexdigest()
+        file_path = './static/images/{0}.{1}'.format(md5_digest, file_type)
+        file_bin = base64.b64decode(file_data)
+
+        f = open(file_path, 'wb')
+        f.write(file_bin)
+        f.close()
+
+        obj = ImgSource.objects.create(md5=md5_digest, path=file_path)
+        obj.save()
+
+        return self.success(None)
+
+
+class CarouselManage(BaseAPIView):
+    @login_required
+    def post(self, request):
+        data = request.data
+        url = data['url']
+        description = data['desc']
+
+        obj = Carousel.objects.create(url=url, description = description)
+        obj.save()
+
+        return self.success(None)
+
+    def get(self, request):
+        pass
+
+    @login_required
+    def put(self, request):
+        data = request.data
+        desc = data['desc']
+        _id = data['id']
+
+        if not Carousel.objects.filter(_id=_id).exists():
+            return self.error(
+                {
+                    'errMsg': 'Carousel with post id is not exist.'
+                }
+            )
+
+        obj = Carousel.objects.get(_id=_id)
+        obj.description = desc
+        obj.save()
+
+        return self.success(None)
+
+    @login_required
+    def delete(self, request):
+        _id = request.data['id']
+
+        # todo : 重复代码
+        if not Carousel.objects.filter(_id=_id).exists():
+            return self.error(
+                {
+                    'errMsg': 'Carousel with post id is not exist.'
+                }
+            )
+
+        Carousel.objects.get(_id=_id).delete()
+        return self.success(None)

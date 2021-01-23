@@ -121,3 +121,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, "static"),
+)
+
+# 限制请求体大小
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
