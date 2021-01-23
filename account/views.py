@@ -8,8 +8,9 @@ import json
 import hashlib
 import base64
 import os
-from utils import functions, contants, google_auth
-from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel
+from utils import functions, contants, google_auth, article_spider
+from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel, Personnel
+from spider.models import VXPage
 from django.contrib import auth
 from .serializer import AdminUserSerializer, WebsiteInfoSerializer
 # Create your views here.
@@ -253,7 +254,9 @@ class UploadAPI(BaseAPIView):
         obj = ImgSource.objects.create(md5=md5_digest, path=file_path)
         obj.save()
 
-        return self.success(None)
+        return self.success({
+            'file_path': file_path[1:]
+        })
 
 
 class CarouselManage(BaseAPIView):
@@ -304,3 +307,70 @@ class CarouselManage(BaseAPIView):
 
         Carousel.objects.get(_id=_id).delete()
         return self.success(None)
+
+
+class PersonnelManage(BaseAPIView):
+    def get(self, request):
+        pass
+
+    @login_required
+    def post(self, request):
+        data = request.data
+        name = data['name']
+        avatar = data['avatar']
+        duties = data['duties']
+
+        obj = Personnel.objects.create(
+            name=name,
+            avatar=avatar,
+            duties=duties
+        )
+        obj.save()
+        return self.success(None)
+
+    @login_required
+    def put(self, request):
+        data = request.data
+
+        _id = data['id']
+        name = data['name']
+        duties = data['duties']
+
+        if not Personnel.objects.filter(_id=_id).exists():
+            return self.error(
+                {
+                    'errMsg': 'Personnel is not exists.'
+                }
+            )
+
+        obj = Personnel.objects.get(_id=_id)
+        obj.name = name
+        obj.duties = obj.duties
+        obj.save()
+        return self.success(None)
+
+    # todo:重复代码
+    @login_required
+    def delete(self, request):
+        _id = request.data['id']
+
+        if not Personnel.objects.filter(_id=_id).exists():
+            return self.error(
+                {
+                    'errMsg': 'Personnel is not exists.'
+                }
+            )
+
+        Personnel.objects.get(_id=_id).delete()
+        return self.success(None)
+
+
+class ArticlesManage(BaseAPIView):
+    @login_required
+    def get(self, request):
+        pass
+
+    @login_required
+    def post(self, request):
+        url = request.data['vx_url']
+        page = article_spider.get_article(url)
