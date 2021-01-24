@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AdminUser, WebsiteInfo
+from .models import AdminUser, WebsiteInfo, Carousel, Personnel
 
 
 class AdminUserSerializer(serializers.Serializer):
@@ -17,3 +17,20 @@ class WebsiteInfoSerializer(serializers.Serializer):
 
     class Meta:
         model = WebsiteInfo
+
+
+class PersonnelSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    avatar = serializers.CharField()
+    duties = serializers.CharField()
+
+    class Meta:
+        model = Personnel
+
+
+class CarouselSerializer(serializers.Serializer):
+    url = serializers.CharField()
+    description = serializers.CharField()
+
+    class Meta:
+        model = Carousel

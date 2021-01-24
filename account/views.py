@@ -2,31 +2,34 @@ from django.shortcuts import render
 from utils.baseclasses import BaseAPIView
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS_1_V1_5
 from Crypto.PublicKey import RSA
+from Crypto import Random
 from .decorators import login_required
 from utils.hashtool import hash2mark
 import json
 import hashlib
 import base64
-import os
+import string
 from utils import functions, contants, google_auth, article_spider
 from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel, Personnel
 from spider.models import VXPage
 from django.contrib import auth
-from .serializer import AdminUserSerializer, WebsiteInfoSerializer
+from .serializer import AdminUserSerializer, WebsiteInfoSerializer, CarouselSerializer, PersonnelSerializer
+from spider.serializer import VXPageHomeSerializer, VXPageSerializer
 # Create your views here.
-
 
 class LoginRequest(BaseAPIView):
     def get(self, request):
         mark_info = request.GET.get('mark_info')
         timestamp = request.GET.get('timestamp')
+        timestamp = int(timestamp)
+
         nonce = request.GET.get('nonce')
         verify_mark = hash2mark(timestamp, nonce)
         _timestamp = functions.timestamp()
 
         if mark_info != verify_mark:
             return self.error({'msg': '标记信息校验错误'})
-        ip = functions.user_ip()
+        ip = functions.user_ip(request)
 
         if Cache.objects.filter(ip_address=ip).exists():
             obj = Cache.objects.get(ip_address=ip)
@@ -40,11 +43,10 @@ class LoginRequest(BaseAPIView):
             else:
                 obj.delete()
 
-        # todo: 完善hash函数以及mark_info2int函数
         if _timestamp - timestamp <= 1800:
-            rsa = RSA.generate(2048, mark_info)
-            rsa_hex_pub = rsa.publickey().export_key('DER').hex()
-            rsa_hex_sec = rsa.export_key('DER').hex
+            rsa = RSA.generate(2048, Random.new().read)
+            rsa_hex_pub = rsa.publickey().export_key('PEM').decode()
+            rsa_hex_sec = rsa.export_key('PEM').decode()
             obj = Cache.objects.create(mark_info=mark_info, public=rsa_hex_pub, secret=rsa_hex_sec,
                                        timestamp=timestamp, ip_address=ip)
             obj.save()
@@ -72,11 +74,10 @@ class Login(BaseAPIView):
         # 数据解密处理，最后转json
         crypto_data = data['crypto']
         obj = Cache.objects.get(mark_info=mark_info)
-        sec = bytes.fromhex(obj.secret)
-        rsa = RSA.import_key(sec, 'DER')
+        sec = obj.secret
+        rsa = RSA.import_key(sec, 'PEM')
         cipher = Cipher_PKCS_1_V1_5.new(rsa)
-        text = cipher.decrypt(crypto_data)
-
+        text = cipher.decrypt(base64.b64decode(crypto_data), None).decode()
         try:
             json_data = json.loads(text)
         except json.decoder.JSONDecodeError:
@@ -86,6 +87,7 @@ class Login(BaseAPIView):
 
         username = json_data['username']
         password = json_data['password']
+        print(username, password)
         user = auth.authenticate(username=username, password=password)
         if user:
             if AdminUser.check_password(user,password):
@@ -111,13 +113,13 @@ class UserInfoAPI(BaseAPIView):
 
 class WebsiteInfoAPI(BaseAPIView):
     def get(self, request):
-        obj = WebsiteInfo.objects.get(_id=0)
+        obj = WebsiteInfo.objects.latest()
         return self.success(WebsiteInfoSerializer(obj).data)
 
     @login_required
     def post(self, request):
         data = request.data
-        obj = WebsiteInfo.objects.get(_id=0)
+        obj = WebsiteInfo.objects.latest()
         obj.title = data['title']
         obj.record = data['record']
         obj.record_switch = data['record_switch']
@@ -224,6 +226,7 @@ class UploadAPI(BaseAPIView):
 
         return self.success(None)
 
+    @login_required
     def post(self, request):
         data = request.data
         file_data = data['encode_data']
@@ -272,7 +275,8 @@ class CarouselManage(BaseAPIView):
         return self.success(None)
 
     def get(self, request):
-        pass
+        objs = Carousel.objects.all()
+        return self.success(CarouselSerializer(objs, many=True).data)
 
     @login_required
     def put(self, request):
@@ -311,7 +315,8 @@ class CarouselManage(BaseAPIView):
 
 class PersonnelManage(BaseAPIView):
     def get(self, request):
-        pass
+        objs = Personnel.objects.all()
+        return self.success(PersonnelSerializer(objs, many=True).data)
 
     @login_required
     def post(self, request):
@@ -366,11 +371,48 @@ class PersonnelManage(BaseAPIView):
 
 
 class ArticlesManage(BaseAPIView):
-    @login_required
-    def get(self, request):
-        pass
-
+    # 爬虫需要检查地址的有效性
     @login_required
     def post(self, request):
         url = request.data['vx_url']
-        page = article_spider.get_article(url)
+        page_json = article_spider.get_article(url)
+        obj = VXPage.objects.create(
+            title=page_json['title'],
+            author=page_json['nickname'],
+            context=page_json['page']
+        )
+        obj.save()
+
+        return self.success(None)
+
+    @login_required
+    def put(self, request):
+        _id = request.data['id']
+        desc = request.data['desc']
+
+        if VXPage.objects.filter(_id=_id).exists():
+            obj = VXPage.objects.get(_id=id)
+            obj.description = desc
+            obj.save()
+
+            return self.success(None)
+
+        return self.error(None)
+
+    @login_required
+    def delete(self, request):
+        _id = request.data['_id']
+
+        if VXPage.objects.filter(_id=_id).exists():
+            VXPage.objects.get(_id=_id).delete()
+            return self.success(None)
+
+        return self.error(None)
+
+
+class ArticlesHomeAPI(BaseAPIView):
+    def get(self):
+        articles = VXPage.objects.all()
+        length = VXPage.objects.count()
+        articles = articles[length - (min(length, 5)): length]
+        return self.success(VXPageHomeSerializer(articles, many=True).data)
