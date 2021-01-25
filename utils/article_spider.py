@@ -1,21 +1,20 @@
 from bs4 import BeautifulSoup
-import requests_html
-
+from selenium import webdriver
+import time
 
 def get_article_page(url):
-    from bs4 import BeautifulSoup
-    import requests_html
+    options = webdriver.FirefoxOptions()
+    options.add_argument("--headless")
+    driver = webdriver.Firefox(options=options)
+    driver.get(url)
 
-    req = requests_html.HTMLSession()
-    responses = req.get('https://mp.weixin.qq.com/s/q5wtK3iC9xYq_Wn3cMsy2A',
-                        headers={
-                            'user-agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.9"})
-    responses.html.render(sleep=1)
-
-    soup = BeautifulSoup(responses.html.html, 'html.parser')
+    html = driver.execute_script("return document.documentElement.outerHTML")
+    soup = BeautifulSoup(html, 'html.parser')
+    driver.close()
 
     nickname = soup.find('strong', {'class': 'profile_nickname'}).string
     title = soup.find('h2', {'class': 'rich_media_title'}).string
+    title = title.strip().replace(' ', '')
 
     for div in soup.find_all("div", {'class': 'qr_code_pc_outer'}):
         div.decompose()
@@ -31,3 +30,5 @@ def get_article_page(url):
         'nickname': nickname,
         'page': page
     }
+
+# print(get_article_page('https://mp.weixin.qq.com/s/G52Q9Pag56Qp9NRXVWSHQQ'))

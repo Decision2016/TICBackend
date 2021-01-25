@@ -16,5 +16,6 @@ Including another URLconf
 from django.conf.urls import url, include
 
 urlpatterns = [
-    url(r'^api/', include("account.urls"))
+    url(r'^api/', include("account.urls")),
+    url(r'^api/', include("spider.urls"))
 ]

@@ -9,7 +9,7 @@ class VXPage(models.Model):
     title = models.CharField(max_length=256)
     author = models.CharField(max_length=30)
     avatar = models.CharField(max_length=128)
-    datetime = models.DateTimeField(auto_now=True)
+    date = models.DateField(auto_now=True)
     description = models.TextField()
     context = models.TextField()
 

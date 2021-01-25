@@ -3,9 +3,10 @@ from .models import VXPage
 
 
 class VXPageHomeSerializer(serializers.Serializer):
+    _id = serializers.IntegerField()
     title = serializers.CharField()
     author = serializers.CharField()
-    datetime = serializers.DateTimeField()
+    date = serializers.DateField()
     description = serializers.CharField()
 
     class Meta:

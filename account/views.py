@@ -113,16 +113,15 @@ class UserInfoAPI(BaseAPIView):
 
 class WebsiteInfoAPI(BaseAPIView):
     def get(self, request):
-        obj = WebsiteInfo.objects.latest()
+        obj = WebsiteInfo.objects.last()
         return self.success(WebsiteInfoSerializer(obj).data)
 
     @login_required
     def post(self, request):
         data = request.data
-        obj = WebsiteInfo.objects.latest()
+        obj = WebsiteInfo.objects.last()
         obj.title = data['title']
         obj.record = data['record']
-        obj.record_switch = data['record_switch']
         obj.save()
         return self.success(None)
 
@@ -145,7 +144,7 @@ class VerifyChange(BaseAPIView):
         timestamp = functions.timestamp()
 
         if (user.errCount > contants.verifyMax) and (lastTimestamp is not None) and \
-                (timestamp - lastTimestamp > contants.intervals):
+                (timestamp - lastTimestamp < contants.intervals):
             return self.error({
                 'errMsg': 'Verify error is too frequently.'
             })
@@ -224,18 +223,6 @@ class ChangeVerifySec(BaseAPIView):
 
 
 class UploadAPI(BaseAPIView):
-    @login_required
-    def get(self, request):
-        # 这里的MD5信息是图片内容经过Base64处理后进行哈希得到
-        md5 = request.GET.get('file_md5')
-        if ImgSource.objects.filter(md5=md5).exists():
-            return self.info(
-                {
-                    'errMsg': 'File already exists.'
-                }
-            )
-
-        return self.success(None)
 
     @login_required
     def post(self, request):
@@ -259,7 +246,7 @@ class UploadAPI(BaseAPIView):
             )
 
         md5_digest = hashlib.md5(file_data.encode('utf-8')).hexdigest()
-        file_path = './static/images/{0}.{1}'.format(md5_digest, file_type)
+        file_path = './sources/images/{0}.{1}'.format(md5_digest, file_type)
         file_bin = base64.b64decode(file_data)
 
         f = open(file_path, 'wb')
@@ -382,49 +369,17 @@ class PersonnelManage(BaseAPIView):
         return self.success(None)
 
 
-class ArticlesManage(BaseAPIView):
-    # 爬虫需要检查地址的有效性
+class SwitchAPI(BaseAPIView):
     @login_required
-    def post(self, request):
-        url = request.data['vx_url']
-        page_json = article_spider.get_article(url)
-        obj = VXPage.objects.create(
-            title=page_json['title'],
-            author=page_json['nickname'],
-            context=page_json['page']
-        )
+    def get(self, request):
+        switch = request.GET.get('switch')
+        obj = WebsiteInfo.objects.last()
+        if switch == 'maintain':
+            obj.maintain = not obj.maintain
+        elif switch == 'record':
+            obj.record_switch = not obj.record_switch
+        else:
+            return self.error(None)
+
         obj.save()
-
         return self.success(None)
-
-    @login_required
-    def put(self, request):
-        _id = request.data['id']
-        desc = request.data['desc']
-
-        if VXPage.objects.filter(_id=_id).exists():
-            obj = VXPage.objects.get(_id=id)
-            obj.description = desc
-            obj.save()
-
-            return self.success(None)
-
-        return self.error(None)
-
-    @login_required
-    def delete(self, request):
-        _id = request.data['_id']
-
-        if VXPage.objects.filter(_id=_id).exists():
-            VXPage.objects.get(_id=_id).delete()
-            return self.success(None)
-
-        return self.error(None)
-
-
-class ArticlesHomeAPI(BaseAPIView):
-    def get(self):
-        articles = VXPage.objects.all()
-        length = VXPage.objects.count()
-        articles = articles[length - (min(length, 5)): length]
-        return self.success(VXPageHomeSerializer(articles, many=True).data)
