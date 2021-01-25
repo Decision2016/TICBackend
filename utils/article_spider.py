@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup
 from selenium import webdriver
-import time
+import requests
+import hashlib
+import re
+
 
 def get_article_page(url):
     options = webdriver.FirefoxOptions()
@@ -21,8 +24,23 @@ def get_article_page(url):
     main_div = soup.find_all("div", {'id': 'js_article'})
 
     for img in soup.find_all("img", {'class': 'img_loading'}):
-        img["src"] = img["data-src"]
+        img_url = img["data-src"]
+
+        _type = re.search('(?<=mmbiz_).+(?=/)', img_url).group()
+        _type = re.search('.+(?=/)', _type).group()
+
+        r = requests.get(img_url)
+        data = r.content
+        md5 = hashlib.md5(data)
+        path = './sources/wx_images/{0}.{1}'.format(md5.hexdigest(), _type)
+
+        with open(path, 'wb') as f:
+            f.write(data)
+            f.close()
+
+        img["src"] = path
         img["data-src"] = ''
+
 
     page = "<html><body>{0}{1}</body></html>".format(soup.find_all("style")[0], main_div[0])
     return {
