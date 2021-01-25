@@ -6,6 +6,8 @@ class AdminUser(AbstractUser):
     username = models.CharField(max_length=256, unique=True)
     email = models.EmailField()
     google_secret = models.CharField(max_length=16, null=True)
+    errCount = models.IntegerField(default=0)
+    errTimestamp = models.BigIntegerField(null=True)
 
     class Meta:
         db_table = "tic_admin_list"
@@ -55,3 +57,4 @@ class WebsiteInfo(models.Model):
     title = models.CharField(max_length=256)
     record = models.CharField(max_length=256)
     record_switch = models.BooleanField(default=False)
+    maintain = models.BooleanField(default=False)

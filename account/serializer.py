@@ -14,12 +14,14 @@ class WebsiteInfoSerializer(serializers.Serializer):
     title = serializers.CharField()
     record = serializers.CharField()
     record_switch = serializers.BooleanField()
+    maintain = serializers.BooleanField()
 
     class Meta:
         model = WebsiteInfo
 
 
 class PersonnelSerializer(serializers.Serializer):
+    _id = serializers.IntegerField()
     name = serializers.CharField()
     avatar = serializers.CharField()
     duties = serializers.CharField()
@@ -29,6 +31,7 @@ class PersonnelSerializer(serializers.Serializer):
 
 
 class CarouselSerializer(serializers.Serializer):
+    _id = serializers.IntegerField()
     url = serializers.CharField()
     description = serializers.CharField()
 

@@ -8,7 +8,7 @@ from utils.hashtool import hash2mark
 import json
 import hashlib
 import base64
-import string
+import time
 from utils import functions, contants, google_auth, article_spider
 from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel, Personnel
 from spider.models import VXPage
@@ -139,12 +139,27 @@ class VerifyChange(BaseAPIView):
         email = data['email']
         code = data['code']
 
+        # todo:对谷歌验证码短时间验证次数的校验可以改为一个模块
+
+        lastTimestamp = user.errTimestamp
+        timestamp = functions.timestamp()
+
+        if (user.errCount > contants.verifyMax) and (lastTimestamp is not None) and \
+                (timestamp - lastTimestamp > contants.intervals):
+            return self.error({
+                'errMsg': 'Verify error is too frequently.'
+            })
+
         # 这里先默认用户已经进行了二次验证绑定
         db_google_sec = user.google_secret
         google_code_array = google_auth.generate_pin(db_google_sec)
         if code not in google_code_array:
+            user.errCount += 1
+            user.errTimestamp = timestamp
+            user.save()
             return self.error({
-                'errMsg': 'Google verify code is wrong.'
+                'errMsg': 'Google verify code is wrong.',
+                'errCount': user.errCount
             })
 
         user.username = username
@@ -155,6 +170,8 @@ class VerifyChange(BaseAPIView):
                     'errMsg': 'Password is too short.'
                 })
             user.set_password(password)
+        user.errCount = 0
+        user.errTimestamp = None
         user.save()
         return self.success(None)
 
@@ -169,6 +186,7 @@ class ChangeVerifySec(BaseAPIView):
         })
 
     @login_required
+    # 添加对验证次数限制
     def post(self, request):
         user = request.user
         data = request.data
@@ -192,24 +210,17 @@ class ChangeVerifySec(BaseAPIView):
                     }
                 )
         origin_code_array = google_auth.generate_pin(db_google_sec)
-        # todo:代码重复，后续考虑优化
+
         if origin in origin_code_array:
             if new_code in new_code_array:
                 user.google_secret = upload_sec
                 user.save()
                 return self.success(None)
-            else:
-                return self.error(
-                    {
-                        'errMsg': 'New google auth code error.'
-                    }
-                )
-        else:
-            return self.error(
-                    {
-                        'errMsg': 'Old google auth code error.'
-                    }
-                )
+        return self.error(
+                {
+                    'errMsg': 'Old code or new code error.'
+                }
+            )
 
 
 class UploadAPI(BaseAPIView):
@@ -240,9 +251,10 @@ class UploadAPI(BaseAPIView):
             )
 
         if ImgSource.objects.filter(md5=file_md5).exists():
-            return self.error(
+            obj = ImgSource.objects.get(md5=file_md5)
+            return self.success(
                 {
-                    'errMsg': 'File already exists.'
+                    'file_path': obj.path
                 }
             )
 
@@ -258,7 +270,7 @@ class UploadAPI(BaseAPIView):
         obj.save()
 
         return self.success({
-            'file_path': file_path[1:]
+            'file_path': file_path
         })
 
 
