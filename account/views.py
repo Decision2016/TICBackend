@@ -263,7 +263,7 @@ class UploadAPI(BaseAPIView):
             obj = ImgSource.objects.get(md5=file_md5)
             return self.success(
                 {
-                    'file_path': obj.path
+                    'file_path': obj.path[1:]
                 }
             )
 
