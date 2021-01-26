@@ -29,11 +29,13 @@ class ArticlesManage(BaseAPIView):
     @login_required
     def post(self, request):
         url = request.data['vx_url']
+        desc = request.data['desc']
         page_json = article_spider.get_article_page(url)
         obj = VXPage.objects.create(
             title=page_json['title'],
             author=page_json['nickname'],
-            context=page_json['page']
+            context=page_json['page'],
+            description=desc
         )
         obj.save()
 

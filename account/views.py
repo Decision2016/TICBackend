@@ -185,7 +185,6 @@ class ChangeVerifySec(BaseAPIView):
         })
 
     @login_required
-    # 添加对验证次数限制
     def post(self, request):
         user = request.user
         data = request.data
@@ -195,6 +194,15 @@ class ChangeVerifySec(BaseAPIView):
 
         db_google_sec = user.google_secret
         new_code_array = google_auth.generate_pin(upload_sec)
+
+        lastTimestamp = user.errTimestamp
+        timestamp = functions.timestamp()
+
+        if (user.errCount > contants.verifyMax) and (lastTimestamp is not None) and \
+                (timestamp - lastTimestamp < contants.intervals):
+            return self.error({
+                'errMsg': 'Verify error is too frequently.'
+            })
 
         # todo：判断upload_sec是base32编码
         if db_google_sec is None:
@@ -210,11 +218,16 @@ class ChangeVerifySec(BaseAPIView):
                 )
         origin_code_array = google_auth.generate_pin(db_google_sec)
 
-        if origin in origin_code_array:
-            if new_code in new_code_array:
-                user.google_secret = upload_sec
-                user.save()
-                return self.success(None)
+        if origin in origin_code_array and new_code in new_code_array:
+            user.google_secret = upload_sec
+            user.errCount = 0
+            user.errTimestamp = None
+            user.save()
+            return self.success(None)
+
+        user.errCount += 1
+        user.errTimestamp = timestamp
+        user.save()
         return self.error(
                 {
                     'errMsg': 'Old code or new code error.'
@@ -257,7 +270,7 @@ class UploadAPI(BaseAPIView):
         obj.save()
 
         return self.success({
-            'file_path': file_path
+            'file_path': file_path[1:]
         })
 
 

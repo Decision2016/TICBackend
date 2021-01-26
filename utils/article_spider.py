@@ -38,7 +38,7 @@ def get_article_page(url):
             f.write(data)
             f.close()
 
-        img["src"] = path
+        img["src"] = path[1:]
         img["data-src"] = ''
 
 
