@@ -11,7 +11,6 @@ import base64
 import time
 from utils import functions, contants, google_auth, article_spider
 from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel, Personnel
-from spider.models import VXPage
 from django.contrib import auth
 from .serializer import AdminUserSerializer, WebsiteInfoSerializer, CarouselSerializer, PersonnelSerializer
 from spider.serializer import VXPageHomeSerializer, VXPageSerializer
@@ -65,15 +64,21 @@ class Login(BaseAPIView):
     def post(self, request):
         data = request.data
         mark_info = data['mark_info']
+        ip_address = functions.user_ip(request)
 
-        if not Cache.objects.filter(mark_info=mark_info).exists():
+        if not Cache.objects.filter(mark_info=mark_info, ip_address=ip_address).exists():
             return self.error({
                 'errMsg': 'mark_info is not exist.'
             })
 
         # 数据解密处理，最后转json
+        obj = Cache.objects.get(mark_info=mark_info, ip_address=ip_address)
+        if obj.errCount >= 5:
+            return self.frequent({
+                'errMsg': 'Verify error is too frequently.'
+            })
+
         crypto_data = data['crypto']
-        obj = Cache.objects.get(mark_info=mark_info)
         sec = obj.secret
         rsa = RSA.import_key(sec, 'PEM')
         cipher = Cipher_PKCS_1_V1_5.new(rsa)
@@ -87,21 +92,25 @@ class Login(BaseAPIView):
 
         username = json_data['username']
         password = json_data['password']
-        print(username, password)
         user = auth.authenticate(username=username, password=password)
-        if user:
-            if AdminUser.check_password(user,password):
-                auth.login(request, user)
-                Cache.objects.get(mark_info=mark_info).delete()
-                return self.success(None)
-            else:
-                return self.error({
-                    'errMsg': "Username or Password is incorrect"
-                })
+        if user and AdminUser.check_password(user, password):
+            auth.login(request, user)
+            Cache.objects.get(mark_info=mark_info).delete()
+            return self.success(None)
         else:
+            obj.errCount += 1
+            obj.save()
             return self.error({
-                'errMsg': "User is not existed"
+                'errMsg': "User is not existed or password is wrong"
             })
+
+
+class LogoutAPI(BaseAPIView):
+    @login_required
+    def get(self, request):
+        auth.logout(request)
+        return self.success(None)
+
 
 
 class UserInfoAPI(BaseAPIView):
@@ -145,7 +154,7 @@ class VerifyChange(BaseAPIView):
 
         if (user.errCount > contants.verifyMax) and (lastTimestamp is not None) and \
                 (timestamp - lastTimestamp < contants.intervals):
-            return self.error({
+            return self.frequent({
                 'errMsg': 'Verify error is too frequently.'
             })
 
@@ -200,7 +209,7 @@ class ChangeVerifySec(BaseAPIView):
 
         if (user.errCount > contants.verifyMax) and (lastTimestamp is not None) and \
                 (timestamp - lastTimestamp < contants.intervals):
-            return self.error({
+            return self.frequent({
                 'errMsg': 'Verify error is too frequently.'
             })
 

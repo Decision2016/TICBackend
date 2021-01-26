@@ -3,6 +3,8 @@ from utils.baseclasses import BaseAPIView
 from .models import VXPage
 from .serializer import VXPageSerializer, VXPageHomeSerializer
 from utils import article_spider
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from rest_framework.response import Response
 
 
 class ArticlesHomeAPI(BaseAPIView):
@@ -23,7 +25,23 @@ class ArticleAPI(BaseAPIView):
 class ArticlesManage(BaseAPIView):
     def get(self, request):
         articles = VXPage.objects.all()
-        return self.success(VXPageHomeSerializer(articles, many=True).data)
+        pageinator = Paginator(articles, 5, 2)
+        page = request.GET.get('page')
+
+        try:
+            result = pageinator.page(page)
+        except PageNotAnInteger:
+            result = pageinator.page(1)
+        except EmptyPage:
+            result = pageinator.page(pageinator.num_pages)
+
+        result = VXPageHomeSerializer(result, many=True)
+
+        return Response({
+            'code': 0,
+            'total': articles.count() // 10 + 1,
+            'data': result.data
+        })
 
     # 爬虫需要检查地址的有效性
     @login_required

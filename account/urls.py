@@ -4,6 +4,7 @@ from account import views
 urlpatterns = [
     url(r'^login_require', views.LoginRequest.as_view()),
     url(r'^login', views.Login.as_view()),
+    url(r'^logout', views.LogoutAPI.as_view()),
     url(r'^info', views.UserInfoAPI.as_view()),
     url(r'^website', views.WebsiteInfoAPI.as_view()),
     url(r'^verify_change', views.VerifyChange.as_view()),

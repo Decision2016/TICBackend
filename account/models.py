@@ -19,6 +19,8 @@ class Cache(models.Model):
     secret = models.TextField()
     timestamp = models.BigIntegerField()
     ip_address = models.CharField(max_length=64)
+    errCount = models.IntegerField(default=0)
+    errTimestamp = models.BigIntegerField(null=True, default=None)
 
     class Meta:
         db_table = "tic_cache"
