@@ -1,8 +1,13 @@
 import time
+import os
 
 
 def timestamp():
     return int(time.time())
+
+
+def get_env(name, default=""):
+    return os.environ.get(name, default)
 
 
 def user_ip(request):
