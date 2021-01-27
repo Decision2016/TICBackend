@@ -12,16 +12,22 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 import os
 from pathlib import Path
+from utils.functions import get_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+production_env = get_env("ENV") == "production"
+if production_env:
+    from .prodection_env import *
+else:
+    from .dev_env import *
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'j200x22m-xdk45v*b+3^3n_sgu$iq05i^6g#a^msvm+^sc9q&)'
+SECRET_KEY = 'P9J-4_\bk%}23M$i]NTI7nzN3kX=f!2TxB%/*V0l20759PD?Oh'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -76,13 +82,6 @@ WSGI_APPLICATION = 'TICBackend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
 
 AUTH_USER_MODEL = 'account.AdminUser'
 

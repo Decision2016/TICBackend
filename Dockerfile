@@ -1,7 +1,4 @@
-FROM python:3.6
-RUN mkdir -p /usr/src/app
-COPY geckodriver /usr/bin/geckodriver
-RUN chmod 111 /usr/bin/geckodriver
+FROM registry.cn-hangzhou.aliyuncs.com/indigo-bot/indigo-bot:backend
 COPY pip.conf /root/.pip/pip.conf
 COPY requirements.txt /usr/src/app/requirements.txt
 RUN pip install -r /usr/src/app/requirements.txt
