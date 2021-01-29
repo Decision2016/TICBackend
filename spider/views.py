@@ -1,4 +1,4 @@
-from account.decorators import login_required
+from account.decorators import login_required, check_maintain
 from utils.baseclasses import BaseAPIView
 from .models import VXPage
 from .serializer import VXPageSerializer, VXPageHomeSerializer
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 
 class ArticlesHomeAPI(BaseAPIView):
+    @check_maintain
     def get(self, request):
         articles = VXPage.objects.all()
         length = VXPage.objects.count()
@@ -16,6 +17,7 @@ class ArticlesHomeAPI(BaseAPIView):
 
 
 class ArticleAPI(BaseAPIView):
+    @check_maintain
     def get(self, request):
         _id = request.GET.get('id')
         obj = VXPage.objects.get(_id=_id)
@@ -23,6 +25,7 @@ class ArticleAPI(BaseAPIView):
 
 
 class ArticlesManage(BaseAPIView):
+    @check_maintain
     def get(self, request):
         articles = VXPage.objects.all()
         pageinator = Paginator(articles, 5, 2)

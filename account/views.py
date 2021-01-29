@@ -3,7 +3,7 @@ from utils.baseclasses import BaseAPIView
 from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS_1_V1_5
 from Crypto.PublicKey import RSA
 from Crypto import Random
-from .decorators import login_required
+from .decorators import login_required, check_maintain
 from utils.hashtool import hash2mark
 import json
 import hashlib
@@ -16,6 +16,7 @@ from .serializer import AdminUserSerializer, WebsiteInfoSerializer, CarouselSeri
 
 
 class LoginRequest(BaseAPIView):
+    @check_maintain
     def get(self, request):
         mark_info = request.GET.get('mark_info')
         timestamp = request.GET.get('timestamp')
@@ -118,6 +119,7 @@ class UserInfoAPI(BaseAPIView):
 
 
 class WebsiteInfoAPI(BaseAPIView):
+    @check_maintain
     def get(self, request):
         obj = WebsiteInfo.objects.last()
         return self.success(WebsiteInfoSerializer(obj).data)
@@ -292,6 +294,7 @@ class CarouselManage(BaseAPIView):
 
         return self.success(None)
 
+    @check_maintain
     def get(self, request):
         objs = Carousel.objects.all()
         return self.success(CarouselSerializer(objs, many=True).data)
@@ -332,6 +335,7 @@ class CarouselManage(BaseAPIView):
 
 
 class PersonnelManage(BaseAPIView):
+    @check_maintain
     def get(self, request):
         objs = Personnel.objects.all()
         return self.success(PersonnelSerializer(objs, many=True).data)
