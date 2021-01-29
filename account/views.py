@@ -13,16 +13,15 @@ from utils import functions, contants, google_auth, article_spider
 from .models import Cache, AdminUser, WebsiteInfo, ImgSource, Carousel, Personnel
 from django.contrib import auth
 from .serializer import AdminUserSerializer, WebsiteInfoSerializer, CarouselSerializer, PersonnelSerializer
-from spider.serializer import VXPageHomeSerializer, VXPageSerializer
-# Create your views here.
+
 
 class LoginRequest(BaseAPIView):
     def get(self, request):
         mark_info = request.GET.get('mark_info')
         timestamp = request.GET.get('timestamp')
-        timestamp = int(timestamp)
-
         nonce = request.GET.get('nonce')
+
+        timestamp = int(timestamp)
         verify_mark = hash2mark(timestamp, nonce)
         _timestamp = functions.timestamp()
 
@@ -74,9 +73,7 @@ class Login(BaseAPIView):
         # 数据解密处理，最后转json
         obj = Cache.objects.get(mark_info=mark_info, ip_address=ip_address)
         if obj.errCount >= 5:
-            return self.frequent({
-                'errMsg': 'Verify error is too frequently.'
-            })
+            return self.frequent()
 
         crypto_data = data['crypto']
         sec = obj.secret
