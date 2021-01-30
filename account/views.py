@@ -119,7 +119,6 @@ class UserInfoAPI(BaseAPIView):
 
 
 class WebsiteInfoAPI(BaseAPIView):
-    @check_maintain
     def get(self, request):
         obj = WebsiteInfo.objects.last()
         return self.success(WebsiteInfoSerializer(obj).data)
