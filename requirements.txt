@@ -6,13 +6,13 @@ certifi==2020.12.5
 chardet==4.0.0
 crypto==1.4.1
 cssselect==1.1.0
-Django==3.1.5
+Django==3.1.8
 django-rest-framework==0.1.0
 djangorestframework==3.12.2
 fake-useragent==0.1.11
 idna==2.10
 importlib-metadata==2.1.1
-lxml==4.6.2
+lxml==4.6.3
 Naked==0.1.31
 parse==1.19.0
 pycryptodome==3.9.9
